@@ -4,7 +4,7 @@ import subprocess
 import datetime, time
 import argparse
 import cairo
-import math
+from math import pi, radians, sin, cos, asin, sqrt
 
 gpxfile = None
 output = None
@@ -165,12 +165,12 @@ def calc_distance(lat1, lon1, lat2, lon2):
     on the earth (specified in decimal degrees)
     """
     # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
     # haversine formula
     dlon = lon2 - lon1
     dlat = lat2 - lat1
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    c = 2 * math.asin(math.sqrt(a))
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
     km = 6371 * c
     return km
 
@@ -227,7 +227,7 @@ def build_track(item, ctx):
     x = dist * scale + TRACK_OFFSET_X
 
     ctx.set_source_rgb(0/255., 0/255., 255/255.)
-    ctx.arc(x, y, 5, 0.0, 2.0 * math.pi)
+    ctx.arc(x, y, 5, 0.0, 2.0 * pi)
     ctx.fill()
 
 
@@ -336,7 +336,7 @@ def build_elevation(item, ctx):
     y = ELEVATION_OFFSET_Y + ELEVATION_HEIGHT - e
 
     ctx.set_source_rgb(0/255., 0/255., 255/255.)
-    ctx.arc(x, y, 5, 0.0, 2.0 * math.pi)
+    ctx.arc(x, y, 5, 0.0, 2.0 * pi)
     ctx.fill()
 
     ##écriture elevationmax
