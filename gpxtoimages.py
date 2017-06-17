@@ -5,6 +5,7 @@ import datetime, time
 import argparse
 import cairo
 from math import pi, radians, sin, cos, asin, sqrt
+from multiprocessing import Process, Queue
 
 gpxfile = None
 output = None
@@ -174,7 +175,7 @@ def calc_distance(lat1, lon1, lat2, lon2):
     km = 6371 * c
     return km
 
-
+#################TRACK##################
 TRACK_OFFSET_X = 10
 TRACK_OFFSET_Y = 10
 TRACK_WIDTH = 190
@@ -230,7 +231,7 @@ def build_track(item, ctx):
     ctx.arc(x, y, 5, 0.0, 2.0 * pi)
     ctx.fill()
 
-
+#################INFO##################
 INFO_OFFSET_X = 210
 INFO_OFFSET_Y = 10
 INFO_WIDTH = 150
@@ -269,30 +270,56 @@ def build_info(item, ctx):
     ctx.move_to(INFO_OFFSET_X + 5, INFO_OFFSET_Y + 5 + 15 + 15 + height + height2 + height3)
     ctx.show_text(text)
 
-
-SPEED_OFFSET_X = INFO_OFFSET_X + INFO_WIDTH + 15
-SPEED_OFFSET_Y = 10
-SPEED_WIDTH = 360
-SPEED_HEIGHT = 60
+#################SPEED##################
+SPEED_WIDTH = 225
+SPEED_HEIGHT = 225
+SPEED_OFFSET_X = SPEED_WIDTH/2
+SPEED_OFFSET_Y = SPEED_HEIGHT/2
 def build_speed(item, ctx):
-    ctx.set_source_rgba(0, 0, 0, 0.3)
-    ctx.rectangle (SPEED_OFFSET_X, SPEED_OFFSET_Y, SPEED_WIDTH, SPEED_HEIGHT)
+    
+    sppedWidht = int(269 * (item['speed']/vmax))+100  #(0 à 259) soit 260 valeurs, et +100 car angle2 min = 100 et max 360
+          
+    angle2 = sppedWidht * (pi/180.0)
+    angle1 = (180 - sppedWidht) * (pi/180.0)
+    rayon = 110
+   
+    ctx.set_source_rgba(0, 0, 0, 0.3)# couleur de fond
+    ctx.arc(SPEED_OFFSET_X, SPEED_OFFSET_Y, rayon, 0, 2*pi)
+    ctx.fill()
+    
+    ctx.set_line_width(3)
+    ctx.set_source_rgb(1,1,1)
+    ctx.new_sub_path ()
+    ctx.arc(SPEED_OFFSET_X, SPEED_OFFSET_Y, rayon, 0, 2*pi)
+    ctx.close_path ()
+    ctx.stroke()
+    
+    ctx.new_path()
+    ctx.set_source_rgba(item['speed_color'][0] / 255., item['speed_color'][1] / 255., item['speed_color'][2] / 255., 0.7)
+    ctx.arc(SPEED_OFFSET_X, SPEED_OFFSET_Y, rayon, angle1, angle2)
+    ctx.close_path ()
     ctx.fill()
 
-    ctx.set_source_rgb(item['speed_color'][0] / 255., item['speed_color'][1] / 255., item['speed_color'][2] / 255.)
-    ctx.rectangle (SPEED_OFFSET_X, SPEED_OFFSET_Y, int(SPEED_WIDTH * (item['speed']/vmax)), SPEED_HEIGHT)
-    ctx.fill()
-
-    ctx.set_source_rgb(1.0, 1.0, 1.0)
-    ctx.select_font_face("Sans",
-            cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(50)
-    text = '%0.1f km/h' % item['speed']
+def label1_speed(item, ctx, labelSpeed):  
+    ctx.set_source_rgb(1,1,1) 
+    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(38)
+    text = '%0.1f' % item['speed']
     x_bearing, y_bearing, width, height = ctx.text_extents(text)[:4]
-    ctx.move_to(SPEED_OFFSET_X + SPEED_WIDTH / 2 - width/2, SPEED_OFFSET_Y + SPEED_HEIGHT / 2 + height/2)
+    ctx.move_to(SPEED_OFFSET_X-x_bearing-width/2, SPEED_OFFSET_Y-y_bearing-height/2)
+    ctx.show_text(text)
+    return ctx.text_extents(text)[:4]
+    
+def label2_speed(item, ctx, labelSpeed):
+    tabulation = 10
+    ctx.set_source_rgb(1,1,1) 
+    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL)
+    ctx.set_font_size(18)
+    text = 'km/h'
+    ctx.move_to((SPEED_OFFSET_X-labelSpeed[0]-labelSpeed[2]/2) + labelSpeed[2] + tabulation , SPEED_OFFSET_Y-labelSpeed[1]-labelSpeed[3]/2)
     ctx.show_text(text)
 
-
+#################ELEVATION##################
 ELEVATION_OFFSET_X = 10
 ELEVATION_OFFSET_Y = TRACK_HEIGHT + TRACK_OFFSET_X + 15
 ELEVATION_WIDTH = TRACK_WIDTH
@@ -383,16 +410,15 @@ os.system('mkdir -p %s' % args.outputfolder)
 
 i = 0
 for item in datas:
-    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
+    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, SPEED_WIDTH, SPEED_HEIGHT)
     ctx = cairo.Context (surface)
-
+  
     build_speed(item, ctx)
-    build_track(item, ctx)
-    build_info(item, ctx)
-    build_elevation(item, ctx)
-
+    labelSpeed = [] 
+    labelSpeed = label1_speed(item, ctx, labelSpeed )
+    labelSpeed = label2_speed(item, ctx, labelSpeed)
+        
     ctx.stroke()
-    surface.write_to_png ('%s/%05d.png' % (args.outputfolder, i))
+    surface.write_to_png ('%s/%03d-speed.png' % (args.outputfolder, i))
 
     i += 1
-
