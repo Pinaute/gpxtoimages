@@ -357,23 +357,16 @@ def build_elevation(item, ctx):
 item_prev = None
 for item in datas:
     ##calcul de la couleur
-    diffs = [
-        { 'diff': 0, 'color': (0, 248, 255)},
-        { 'diff': 0.2, 'color': (0, 115, 255)},
-        { 'diff': 0.4, 'color': (244, 245, 0)},
-        { 'diff': 0.6, 'color': (255, 186, 0)},
-        { 'diff': 0.8, 'color': (255, 75, 0)},
-        { 'diff': 1, 'color': (255, 0, 0)},
-    ]
-    diff = (item['speed'] - vmin) / (vmax - vmin)
-    _diff = 0
-    color = (0, 255, 255)
-    for i in diffs:
-        if math.fabs(diff-i['diff']) < math.fabs(diff-_diff):
-            _diff = i['diff']
-            color = i['color']
-
-    item['speed_color'] = color
+    color = []
+    for i in range(255,0,-1):
+        color.append([0,255,i])
+    for i in range(0,255,+1):
+        color.append([i,255,0])
+    for i in range(255,0,-1):
+        color.append([255,i,0])
+        
+    indexColor = int ((item['speed'] - vmin) / (vmax - vmin) * len(color))
+    item['speed_color'] = color[indexColor - 1] 
 
     ##calcul de la longueur
     if item_prev:
