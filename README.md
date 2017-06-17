@@ -10,6 +10,9 @@ In kdenlive you import a diaporama with settings:
 - file type: .png
 - image duration: 1sec
 
+## Todo
+* [ ] Multiprocessing
+
 ## Acknowledgements
 Forked from [Watchwolf/gpxtoimages](https://github.com/Watchwolf/gpxtoimages). 
 
