@@ -7,6 +7,9 @@ import cairo
 from math import pi, radians, sin, cos, asin, sqrt
 from multiprocessing import Process, Queue
 
+
+MODULE_DIMENSION = 225
+
 gpxfile = None
 output = None
 
@@ -176,11 +179,11 @@ def calc_distance(lat1, lon1, lat2, lon2):
     return km
 
 #################TRACK##################
-TRACK_OFFSET_X = 10
-TRACK_OFFSET_Y = 10
-TRACK_WIDTH = 190
-TRACK_HEIGHT = 190
-##initialisation des valeurs pour dessiner le tracé du cricuit
+MODULE_DIMENSION = 225
+TRACK_OFFSET_X = MODULE_DIMENSION/2
+TRACK_OFFSET_Y = MODULE_DIMENSION/2
+radius = MODULE_DIMENSION/2
+##initialisation des valeurs pour dessiner le tracé du circuit
 ##on prend la plus plus grande distance la longitude et la latitude
 latdiff = calc_distance(latmin, lonmin, latmax, lonmin)
 londiff = calc_distance(latmin, lonmin, latmin, lonmax)
@@ -188,30 +191,37 @@ maxdiff = latdiff
 if londiff > latdiff:
     maxdiff = londiff
 ##on calcul le coef de mise à l'échelle coordonnées GPS -> pixels écran
-scale = TRACK_WIDTH / maxdiff
+scale = radius*0.9 / maxdiff
 ##on calcul la nouvelle hauteur de la zone carte
 #parce qu'il est nécessaire de remonter la carte, par défaut elle se dessine sur le bas de la zone
 dist = calc_distance(latmin, lonmin, latmax, lonmin)
-TRACK_HEIGHT = dist * scale
+trackHeight = dist * scale
 def build_track(item, ctx):
 
     x_start = None
     y_start = None
 
-    ctx.set_source_rgba(1, 1, 1, 0.8)
-    ctx.rectangle (TRACK_OFFSET_X - 5, TRACK_OFFSET_Y - 5, TRACK_WIDTH + 10, TRACK_HEIGHT + 10)
+    # Background
+    ctx.set_source_rgba(0, 0, 0, 0.3)
+    ctx.arc (TRACK_OFFSET_X, TRACK_OFFSET_Y, radius, 0, 2*pi)  
     ctx.fill()
-
+    
+    # Border
+    ctx.set_line_width(2)
+    ctx.set_source_rgb(1,1,1)
+    ctx.arc (TRACK_OFFSET_X, TRACK_OFFSET_Y, radius, 0, 2*pi)  
+    ctx.stroke()
+    
     for data in datas:
         dist = calc_distance(latmin, lonmin, data['lat'], lonmin)
-        y = TRACK_HEIGHT - (dist * scale) + TRACK_OFFSET_Y
+        y = trackHeight - (dist * scale) + MODULE_DIMENSION/4
 
         dist = calc_distance(latmin, lonmin, latmin, data['lon'])
-        x = dist * scale + TRACK_OFFSET_X
-
+        x = dist * scale + MODULE_DIMENSION/4
+        
         if x_start:
             ctx.set_source_rgb(data['speed_color'][0] / 255., data['speed_color'][1] / 255., data['speed_color'][2] / 255.)
-            ctx.set_line_width(4)
+            ctx.set_line_width(3)
             ctx.move_to(x_start, y_start)
             ctx.line_to(x, y) 
             ctx.stroke()
@@ -222,22 +232,22 @@ def build_track(item, ctx):
 
     ##on dessine le point courant
     dist = calc_distance(latmin, lonmin, item['lat'], lonmin)
-    y = TRACK_HEIGHT - (dist * scale) + TRACK_OFFSET_Y
+    y = trackHeight - (dist * scale) + MODULE_DIMENSION/4
 
     dist = calc_distance(latmin, lonmin, latmin, item['lon'])
-    x = dist * scale + TRACK_OFFSET_X
+    x = dist * scale + MODULE_DIMENSION/4
 
     ctx.set_source_rgb(0/255., 0/255., 255/255.)
     ctx.arc(x, y, 5, 0.0, 2.0 * pi)
     ctx.fill()
-
+    
 #################INFO##################
 INFO_OFFSET_X = 210
 INFO_OFFSET_Y = 10
 INFO_WIDTH = 150
 INFO_HEIGHT = 90
-if INFO_HEIGHT < TRACK_HEIGHT:
-    INFO_HEIGHT = TRACK_HEIGHT
+if INFO_HEIGHT < MODULE_DIMENSION:
+    INFO_HEIGHT = MODULE_DIMENSION
 def build_info(item, ctx):
     ctx.set_source_rgba(1, 1, 1, 0.8)
     ctx.rectangle (INFO_OFFSET_X, INFO_OFFSET_Y - 5, INFO_WIDTH, INFO_HEIGHT + 10)
@@ -271,17 +281,16 @@ def build_info(item, ctx):
     ctx.show_text(text)
 
 #################SPEED##################
-SPEED_WIDTH = 225
-SPEED_HEIGHT = 225
-SPEED_OFFSET_X = SPEED_WIDTH/2
-SPEED_OFFSET_Y = SPEED_HEIGHT/2
+MODULE_DIMENSION = 225
+SPEED_OFFSET_X = MODULE_DIMENSION/2
+SPEED_OFFSET_Y = MODULE_DIMENSION/2
 def build_speed(item, ctx):
     
     sppedWidht = int(269 * (item['speed']/vmax))+100  #(0 à 259) soit 260 valeurs, et +100 car angle2 min = 100 et max 360
           
     angle2 = sppedWidht * (pi/180.0)
     angle1 = (180 - sppedWidht) * (pi/180.0)
-    rayon = 110
+    radius = MODULE_DIMENSION/2
    
     ctx.set_source_rgba(0, 0, 0, 0.3)# couleur de fond
     ctx.arc(SPEED_OFFSET_X, SPEED_OFFSET_Y, rayon, 0, 2*pi)
@@ -321,8 +330,8 @@ def label2_speed(item, ctx, labelSpeed):
 
 #################ELEVATION##################
 ELEVATION_OFFSET_X = 10
-ELEVATION_OFFSET_Y = TRACK_HEIGHT + TRACK_OFFSET_X + 15
-ELEVATION_WIDTH = TRACK_WIDTH
+ELEVATION_OFFSET_Y = MODULE_DIMENSION + TRACK_OFFSET_X + 15
+ELEVATION_WIDTH = MODULE_DIMENSION
 ELEVATION_HEIGHT = 60
 def build_elevation(item, ctx):
     ctx.set_source_rgba(1, 1, 1, 0.8)
@@ -407,10 +416,10 @@ average_speed = track_length / total_time.total_seconds() * 60 * 60
 ##supressions du dossier images
 os.system('mkdir -p %s' % args.outputfolder)
 ##
-
+'''
 i = 0
 for item in datas:
-    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, SPEED_WIDTH, SPEED_HEIGHT)
+    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, MODULE_DIMENSION, MODULE_DIMENSION)
     ctx = cairo.Context (surface)
   
     build_speed(item, ctx)
@@ -422,3 +431,16 @@ for item in datas:
     surface.write_to_png ('%s/%03d-speed.png' % (args.outputfolder, i))
 
     i += 1
+'''
+j = 0
+
+for item in datas:
+    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, MODULE_DIMENSION, MODULE_DIMENSION)
+    ctx = cairo.Context (surface)
+
+    build_track(item, ctx)
+
+    ctx.stroke()
+    surface.write_to_png ('%s/%03d-track.png' % (args.outputfolder, j))
+
+    j += 1    
